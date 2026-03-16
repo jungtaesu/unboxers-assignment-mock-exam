@@ -20,7 +20,6 @@ const gradeAnswersSchema = z.object({
         answer: z.number().int()
       })
     )
-    .min(1)
 });
 
 function buildGradeResponse(

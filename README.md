@@ -84,18 +84,7 @@ pnpm dev
   "grade": 1,
   "studentNumber": 12,
   "seatNumber": 3,
-  "answers": [
-    {
-      "answerType": "objective",
-      "number": 1,
-      "answer": 3
-    },
-    {
-      "answerType": "subjective",
-      "number": 1,
-      "answer": 6
-    }
-  ]
+  "answers": []
 }
 ```
 
@@ -106,6 +95,7 @@ pnpm dev
 - `grade`: 학년
 - `studentNumber`: 번호
 - `seatNumber`: 좌석 번호
+- `answers`: 빈 배열도 허용하며, 아무 답안도 제출하지 않으면 전체 문항이 `unanswered`로 채점됨
 - `answers[].answerType`: `objective` 또는 `subjective`
 - `answers[].number`: 문항 번호
 - `answers[].answer`: 제출 답안

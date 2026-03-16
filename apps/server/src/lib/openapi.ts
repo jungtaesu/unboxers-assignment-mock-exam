@@ -60,13 +60,7 @@ export const openApiDocument = {
           seatNumber: { type: "integer" },
           answers: {
             type: "array",
-            example: [
-              {
-                answerType: "objective",
-                number: 1,
-                answer: 3
-              }
-            ],
+            example: [],
             items: {
               type: "object",
               example: {
