@@ -21,3 +21,6 @@ apps/server/generated
 
 # macOS
 .DS_Store
+
+# results
+results/
