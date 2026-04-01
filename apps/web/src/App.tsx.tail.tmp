@@ -1,0 +1,640 @@
+
+const OBJECTIVE_QUESTIONS = Array.from({ length: 14 }, (_, index) => index + 1)
+const SUBJECTIVE_QUESTIONS = Array.from({ length: 11 }, (_, index) => index + 1)
+const OBJECTIVE_CHOICES = [1, 2, 3, 4, 5]
+const EXAM_DURATION_MINUTES = 100
+
+type Step = 'tutorial' | 'marking' | 'result'
+type AnswerType = 'objective' | 'subjective'
+type GradeResult = 'correct' | 'wrong' | 'unanswered' | 'duplicated'
+
+type ExamSummary = {
+  title: string
+  description: string
+  supervisorName: string
+  totalQuestions: number
+  totalScore: number
+}
+
+type StudentForm = {
+  name: string
+  school: string
+  grade: string
+  studentNumber: string
+  seatNumber: string
+}
+
+type SubmitPayload = {
+  name: string
+  school: string
+  grade: number
+  studentNumber: number
+  seatNumber: number
+  answers: Array<{
+    answerType: AnswerType
+    number: number
+    answer: number
+  }>
+}
+
+type SubmitResponse = {
+  title: string
+  score: number
+  correctCount: number
+  wrongCount: number
+  unansweredCount: number
+  results: Array<{
+    answerType: AnswerType
+    number: number
+    result: GradeResult
+  }>
+}
+
+const resultLabelMap: Record<GradeResult, string> = {
+  correct: '?•ë‹µ',
+  wrong: '?¤ë‹µ',
+  unanswered: 'ë¯¸ì‘??,
+  duplicated: 'ì¤‘ë³µ ?œì¶œ',
+}
+
+const resultToneMap: Record<GradeResult, string> = {
+  correct: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  wrong: 'border-rose-200 bg-rose-50 text-rose-700',
+  unanswered: 'border-stone-200 bg-stone-100 text-stone-600',
+  duplicated: 'border-amber-200 bg-amber-50 text-amber-700',
+}
+
+async function fetchExamSummary() {
+  const response = await fetch('/api/exams')
+
+  if (!response.ok) {
+    throw new Error('?œí—˜ ?•ë³´ë¥?ë¶ˆëŸ¬?¤ì? ëª»í–ˆ?µë‹ˆ??')
+  }
+
+  const payload = (await response.json()) as {
+    data: ExamSummary
+  }
+
+  return payload.data
+}
+
+async function submitExam(payload: SubmitPayload) {
+  const response = await fetch('/api/exams/submit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new Error('?µì•ˆ ?œì¶œ???¤íŒ¨?ˆìŠµ?ˆë‹¤.')
+  }
+
+  const data = (await response.json()) as {
+    data: SubmitResponse
+  }
+
+  return data.data
+}
+
+function formatTime(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function buildSubmitPayload(
+  studentForm: StudentForm,
+  objectiveAnswers: Record<number, number | null>,
+  subjectiveAnswers: Record<number, string>,
+) {
+  const answers: SubmitPayload['answers'] = []
+
+  for (const number of OBJECTIVE_QUESTIONS) {
+    const answer = objectiveAnswers[number]
+
+    if (answer != null) {
+      answers.push({
+        answerType: 'objective',
+        number,
+        answer,
+      })
+    }
+  }
+
+  for (const number of SUBJECTIVE_QUESTIONS) {
+    const rawValue = subjectiveAnswers[number]?.trim()
+
+    if (rawValue) {
+      answers.push({
+        answerType: 'subjective',
+        number,
+        answer: Number(rawValue),
+      })
+    }
+  }
+
+  return {
+    name: studentForm.name.trim(),
+    school: studentForm.school.trim(),
+    grade: Number(studentForm.grade),
+    studentNumber: Number(studentForm.studentNumber),
+    seatNumber: Number(studentForm.seatNumber),
+    answers,
+  }
+}
+
+function resultCount(results: SubmitResponse['results'], answerType: AnswerType, result: GradeResult) {
+  return results.filter((entry) => entry.answerType === answerType && entry.result === result).length
+}
+
+function App() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['exam-summary'],
+    queryFn: fetchExamSummary,
+  })
+  const [step, setStep] = useState<Step>('tutorial')
+  const [remainingSeconds, setRemainingSeconds] = useState(EXAM_DURATION_MINUTES * 60)
+  const [validationMessage, setValidationMessage] = useState('')
+  const [studentForm, setStudentForm] = useState<StudentForm>({
+    name: '',
+    school: '',
+    grade: '1',
+    studentNumber: '',
+    seatNumber: '',
+  })
+  const [objectiveAnswers, setObjectiveAnswers] = useState<Record<number, number | null>>(
+    () => Object.fromEntries(OBJECTIVE_QUESTIONS.map((number) => [number, null])) as Record<number, number | null>,
+  )
+  const [subjectiveAnswers, setSubjectiveAnswers] = useState<Record<number, string>>(
+    () => Object.fromEntries(SUBJECTIVE_QUESTIONS.map((number) => [number, ''])) as Record<number, string>,
+  )
+
+  const submitMutation = useMutation({
+    mutationFn: submitExam,
+    onSuccess: () => {
+      setStep('result')
+      setValidationMessage('')
+    },
+  })
+
+  useEffect(() => {
+    if (step !== 'marking') {
+      return undefined
+    }
+
+    const timer = window.setInterval(() => {
+      setRemainingSeconds((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer)
+          return 0
+        }
+
+        return current - 1
+      })
+    }, 1000)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [step])
+
+  const objectiveAnsweredCount = Object.values(objectiveAnswers).filter((value) => value != null).length
+  const subjectiveAnsweredCount = Object.values(subjectiveAnswers).filter((value) => value.trim() !== '').length
+  const totalAnsweredCount = objectiveAnsweredCount + subjectiveAnsweredCount
+
+  const handleStartExam = () => {
+    setStep('marking')
+    setRemainingSeconds(EXAM_DURATION_MINUTES * 60)
+    setValidationMessage('')
+  }
+
+  const handleObjectiveSelect = (questionNumber: number, choice: number) => {
+    setObjectiveAnswers((current) => ({
+      ...current,
+      [questionNumber]: current[questionNumber] === choice ? null : choice,
+    }))
+  }
+
+  const handleStudentFieldChange = (field: keyof StudentForm, value: string) => {
+    setStudentForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  const handleSubmit = () => {
+    const payload = buildSubmitPayload(studentForm, objectiveAnswers, subjectiveAnswers)
+
+    if (!payload.name || !payload.school) {
+      setValidationMessage('?´ë¦„ê³??™êµëª…ì„ ë¨¼ì? ?…ë ¥??ì£¼ì„¸??')
+      return
+    }
+
+    if (!Number.isInteger(payload.grade) || payload.grade <= 0) {
+      setValidationMessage('?™ë…„?€ 1 ?´ìƒ???«ìë¡??…ë ¥??ì£¼ì„¸??')
+      return
+    }
+
+    if (!Number.isInteger(payload.studentNumber) || payload.studentNumber <= 0) {
+      setValidationMessage('?™ìƒ ë²ˆí˜¸??1 ?´ìƒ???«ìë¡??…ë ¥??ì£¼ì„¸??')
+      return
+    }
+
+    if (!Number.isInteger(payload.seatNumber) || payload.seatNumber <= 0) {
+      setValidationMessage('ì¢Œì„ ë²ˆí˜¸??1 ?´ìƒ???«ìë¡??…ë ¥??ì£¼ì„¸??')
+      return
+    }
+
+    const invalidSubjectiveAnswer = payload.answers.some(
+      (answer) => answer.answerType === 'subjective' && Number.isNaN(answer.answer),
+    )
+
+    if (invalidSubjectiveAnswer) {
+      setValidationMessage('ì£¼ê????µì•ˆ?€ ?«ìë§??…ë ¥??ì£¼ì„¸??')
+      return
+    }
+
+    setValidationMessage('')
+    submitMutation.mutate(payload)
+  }
+
+  const result = submitMutation.data
+
+  return (
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#fff5dd_0%,#f6ead2_34%,#ead9bc_100%)] px-4 py-6 text-stone-900 sm:px-6 lg:px-10">
+      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-7xl flex-col gap-6 rounded-[2rem] border border-black/10 bg-white/75 p-5 shadow-[0_30px_90px_rgba(86,54,14,0.14)] backdrop-blur sm:p-8 lg:grid lg:grid-cols-[1.35fr_0.9fr] lg:items-stretch lg:gap-8">
+        <section className="flex flex-col justify-between rounded-[1.5rem] bg-[#1f4a3d] p-6 text-stone-50 sm:p-8">
+          <div className="space-y-6">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium tracking-[0.14em] text-amber-100 uppercase">
+              Base Mock Exam
+            </div>
+
+            <div className="space-y-4">
+              <p className="max-w-xl text-sm leading-6 text-amber-50/80 sm:text-base">
+                ?°ì¹˜?¤í¬ë¦?ê¸°ë°˜ ëª¨ì˜ê³ ì‚¬ ?˜ê²½??ê°€?•í•´ ?œí† ë¦¬ì–¼, OMR ë§ˆí‚¹, ì±„ì  ê²°ê³¼ ?•ì¸ ?ë¦„ê¹Œì? ???”ë©´ ?ˆì—??ë¨¼ì? ê²€ì¦í•  ???ˆê²Œ êµ¬ì„±?ˆìŠµ?ˆë‹¤.
+              </p>
+              <h1 className="max-w-3xl font-serif text-4xl leading-tight tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+                {step === 'result'
+                  ? 'ì±„ì  ê²°ê³¼ë¥??•ì¸?˜ì„¸??'
+                  : isLoading
+                    ? '?œí—˜ ?•ë³´ë¥?ë¶ˆëŸ¬?¤ëŠ” ì¤‘ì…?ˆë‹¤.'
+                    : data?.title ?? 'ëª¨ì˜ê³ ì‚¬ ?‘ì‹œ ì¤€ë¹?}
+              </h1>
+              <p className="max-w-2xl text-base leading-7 text-amber-50/85 sm:text-lg">
+                {isError
+                  ? error instanceof Error
+                    ? error.message
+                    : '?????†ëŠ” ?¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.'
+                  : step === 'tutorial'
+                    ? '?œí—˜ ???ˆë‚´ë¥??•ì¸?˜ê³  ?‘ì‹œë¥??œì‘?˜ì„¸?? ?œì‘ ?„ì—???¨ì? ?œê°„ê³??¨ê»˜ ê°ê??? ì£¼ê????µì•ˆ???…ë ¥?????ˆìŠµ?ˆë‹¤.'
+                    : step === 'marking'
+                      ? '?™ìƒ ?•ë³´ë¥??…ë ¥?˜ê³  OMR ì¹´ë“œ???µì„ ë§ˆí‚¹?????œì¶œ?˜ì„¸??'
+                      : '?œì¶œ???ë‚¬?µë‹ˆ?? ë¬¸í•­ë³?ê²°ê³¼?€ ?„ì²´ ?ìˆ˜ë¥?ë°”ë¡œ ?•ì¸?????ˆìŠµ?ˆë‹¤.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <article className="rounded-[1.25rem] border border-white/10 bg-white/8 p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-amber-100/75">ê°ë…ê´€</p>
+              <p className="mt-2 text-2xl font-semibold">{data?.supervisorName ?? '-'}</p>
+            </article>
+            <article className="rounded-[1.25rem] border border-white/10 bg-white/8 p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-amber-100/75">ë¬¸í•­ ??/p>
+              <p className="mt-2 text-2xl font-semibold">{data?.totalQuestions ?? '-'}ë¬¸í•­</p>
+            </article>
+            <article className="rounded-[1.25rem] border border-white/10 bg-white/8 p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-amber-100/75">ì´ì </p>
+              <p className="mt-2 text-2xl font-semibold">{data?.totalScore ?? '-'}??/p>
+            </article>
+          </div>
+
+          <div className="mt-6 rounded-[1.25rem] border border-white/10 bg-black/10 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-amber-100/75">?„ì¬ ?¨ê³„</p>
+                <p className="mt-1 text-lg font-semibold">
+                  {step === 'tutorial' ? '?œí† ë¦¬ì–¼' : step === 'marking' ? '?µì•ˆ ë§ˆí‚¹' : 'ì±„ì  ê²°ê³¼'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-amber-100/75">?¨ì? ?œê°„</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{formatTime(remainingSeconds)}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-5">
+          {step === 'tutorial' ? (
+            <>
+              <article className="rounded-[1.5rem] border border-stone-200 bg-[#fffdf8] p-6 shadow-[0_12px_40px_rgba(65,44,17,0.08)]">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#955f21]">?‘ì‹œ ?ˆë‚´</p>
+                <div className="mt-5 grid gap-4">
+                  <div className="rounded-2xl bg-[#f3eadb] p-5">
+                    <p className="text-lg font-semibold">1. ì¢…ì´???€?´í•˜ê³??±ì—???µë§Œ ë§ˆí‚¹</p>
+                    <p className="mt-2 text-sm leading-6 text-stone-700">?¤ì œ ?œí—˜ì²˜ëŸ¼ ë¬¸ì œ??ì§€ë©´ìœ¼ë¡??€ê³? ê°ê??ê³¼ ì£¼ê????•ë‹µë§?OMR ?”ë©´???…ë ¥?˜ëŠ” ?ë¦„?…ë‹ˆ??</p>
+                  </div>
+                  <div className="rounded-2xl bg-[#f3eadb] p-5">
+                    <p className="text-lg font-semibold">2. ê°ê??ì? ?°ì¹˜, ì£¼ê??ì? ?«ì ?…ë ¥</p>
+                    <p className="mt-2 text-sm leading-6 text-stone-700">ê°ê??ì? 1ê°œë§Œ ? íƒ?˜ë©° ?¤ì‹œ ?„ë¥´ë©??´ì œ?©ë‹ˆ?? ì£¼ê??ì? ?«ìë§??…ë ¥?©ë‹ˆ??</p>
+                  </div>
+                  <div className="rounded-2xl bg-[#f3eadb] p-5">
+                    <p className="text-lg font-semibold">3. ?œì¶œ ì¦‰ì‹œ ì±„ì  ê²°ê³¼ ?•ì¸</p>
+                    <p className="mt-2 text-sm leading-6 text-stone-700">?œì¶œ ??ì´ì , ?•ì˜¤??ê°œìˆ˜, ë¬¸í•­ë³?ê²°ê³¼ë¥?ë°”ë¡œ ?•ì¸?????ˆìŠµ?ˆë‹¤.</p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-stone-200 bg-white p-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">?œí—˜ êµ¬ì„±</p>
+                <div className="mt-4 grid gap-3 text-sm leading-6 text-stone-700 sm:grid-cols-2">
+                  <div className="rounded-xl border border-stone-200 px-4 py-3">ê°ê???14ë¬¸í•­</div>
+                  <div className="rounded-xl border border-stone-200 px-4 py-3">ì£¼ê???11ë¬¸í•­</div>
+                  <div className="rounded-xl border border-stone-200 px-4 py-3">ì´?{data?.totalQuestions ?? 25}ë¬¸í•­</div>
+                  <div className="rounded-xl border border-stone-200 px-4 py-3">?œí—˜ ?œê°„ {EXAM_DURATION_MINUTES}ë¶?/div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleStartExam}
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[#1f4a3d] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#17382f]"
+                >
+                  ?‘ì‹œ ?œì‘
+                </button>
+              </article>
+            </>
+          ) : null}
+
+          {step === 'marking' ? (
+            <>
+              <article className="rounded-[1.5rem] border border-stone-200 bg-white p-6 shadow-[0_12px_40px_rgba(65,44,17,0.08)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">?‘ì‹œ???•ë³´</p>
+                    <p className="mt-1 text-sm text-stone-600">?œì¶œ ???„ìˆ˜ ?•ë³´?…ë‹ˆ??</p>
+                  </div>
+                  <div className="rounded-full bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700">
+                    ?„ì¬ {totalAnsweredCount} / {data?.totalQuestions ?? 25} ë¬¸í•­ ?…ë ¥
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-medium text-stone-700">
+                    ?´ë¦„
+                    <input
+                      value={studentForm.name}
+                      onChange={(event) => handleStudentFieldChange('name', event.target.value)}
+                      className="h-12 rounded-xl border border-stone-300 px-4 text-base outline-none transition focus:border-[#1f4a3d]"
+                      placeholder="?ê¸¸??
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-stone-700">
+                    ?™êµëª?                    <input
+                      value={studentForm.school}
+                      onChange={(event) => handleStudentFieldChange('school', event.target.value)}
+                      className="h-12 rounded-xl border border-stone-300 px-4 text-base outline-none transition focus:border-[#1f4a3d]"
+                      placeholder="ë² ì´?¤ê³ "
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-stone-700">
+                    ?™ë…„
+                    <input
+                      inputMode="numeric"
+                      value={studentForm.grade}
+                      onChange={(event) => handleStudentFieldChange('grade', event.target.value)}
+                      className="h-12 rounded-xl border border-stone-300 px-4 text-base outline-none transition focus:border-[#1f4a3d]"
+                      placeholder="1"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-stone-700">
+                    ?™ìƒ ë²ˆí˜¸
+                    <input
+                      inputMode="numeric"
+                      value={studentForm.studentNumber}
+                      onChange={(event) => handleStudentFieldChange('studentNumber', event.target.value)}
+                      className="h-12 rounded-xl border border-stone-300 px-4 text-base outline-none transition focus:border-[#1f4a3d]"
+                      placeholder="12"
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-medium text-stone-700 sm:col-span-2">
+                    ì¢Œì„ ë²ˆí˜¸
+                    <input
+                      inputMode="numeric"
+                      value={studentForm.seatNumber}
+                      onChange={(event) => handleStudentFieldChange('seatNumber', event.target.value)}
+                      className="h-12 rounded-xl border border-stone-300 px-4 text-base outline-none transition focus:border-[#1f4a3d]"
+                      placeholder="3"
+                    />
+                  </label>
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-stone-200 bg-[#fffdf8] p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#955f21]">ê°ê???OMR</p>
+                    <p className="mt-1 text-sm text-stone-600">ë²ˆí˜¸ë³„ë¡œ 1ê°œë§Œ ? íƒ?©ë‹ˆ??</p>
+                  </div>
+                  <div className="rounded-full bg-[#f3eadb] px-4 py-2 text-sm font-medium text-stone-700">
+                    {objectiveAnsweredCount} / 14 ?…ë ¥
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-4">
+                  {OBJECTIVE_QUESTIONS.map((questionNumber) => (
+                    <div key={questionNumber} className="rounded-2xl border border-stone-200 bg-white p-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1f4a3d] text-lg font-semibold text-white">
+                          {questionNumber}
+                        </div>
+                        <div className="grid flex-1 grid-cols-5 gap-2">
+                          {OBJECTIVE_CHOICES.map((choice) => {
+                            const isSelected = objectiveAnswers[questionNumber] === choice
+
+                            return (
+                              <button
+                                key={choice}
+                                type="button"
+                                onClick={() => handleObjectiveSelect(questionNumber, choice)}
+                                className={[
+                                  'h-14 rounded-2xl border text-lg font-semibold transition',
+                                  isSelected
+                                    ? 'border-[#1f4a3d] bg-[#1f4a3d] text-white shadow-[0_10px_30px_rgba(31,74,61,0.2)]'
+                                    : 'border-stone-300 bg-stone-50 text-stone-700 hover:border-stone-400',
+                                ].join(' ')}
+                              >
+                                {choice}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-stone-200 bg-white p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">ì£¼ê????µì•ˆ</p>
+                    <p className="mt-1 text-sm text-stone-600">?«ìë§??…ë ¥?©ë‹ˆ??</p>
+                  </div>
+                  <div className="rounded-full bg-stone-100 px-4 py-2 text-sm font-medium text-stone-700">
+                    {subjectiveAnsweredCount} / 11 ?…ë ¥
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {SUBJECTIVE_QUESTIONS.map((questionNumber) => (
+                    <label key={questionNumber} className="rounded-2xl border border-stone-200 bg-[#fcfaf5] p-4 text-sm font-medium text-stone-700">
+                      <span className="mb-2 block">ì£¼ê???{questionNumber}ë²?/span>
+                      <input
+                        inputMode="numeric"
+                        value={subjectiveAnswers[questionNumber]}
+                        onChange={(event) => {
+                          const value = event.target.value.replace(/[^0-9-]/g, '')
+
+                          setSubjectiveAnswers((current) => ({
+                            ...current,
+                            [questionNumber]: value,
+                          }))
+                        }}
+                        className="h-12 w-full rounded-xl border border-stone-300 bg-white px-4 text-base outline-none transition focus:border-[#1f4a3d]"
+                        placeholder="?«ì ?…ë ¥"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  {validationMessage ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      {validationMessage}
+                    </div>
+                  ) : null}
+
+                  {submitMutation.isError ? (
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      {submitMutation.error instanceof Error
+                        ? submitMutation.error.message
+                        : '?œì¶œ ì¤??¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.'}
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setStep('tutorial')}
+                      className="inline-flex flex-1 items-center justify-center rounded-2xl border border-stone-300 bg-white px-5 py-4 text-base font-semibold text-stone-700 transition hover:bg-stone-50"
+                    >
+                      ?ˆë‚´ë¡??Œì•„ê°€ê¸?                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={submitMutation.isPending}
+                      className="inline-flex flex-1 items-center justify-center rounded-2xl bg-[#1f4a3d] px-5 py-4 text-base font-semibold text-white transition hover:bg-[#17382f] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {submitMutation.isPending ? '?œì¶œ ì¤?..' : '?µì•ˆ ?œì¶œ'}
+                    </button>
+                  </div>
+                </div>
+              </article>
+            </>
+          ) : null}
+
+          {step === 'result' && result ? (
+            <>
+              <article className="rounded-[1.5rem] border border-stone-200 bg-white p-6 shadow-[0_12px_40px_rgba(65,44,17,0.08)]">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">ì±„ì  ?”ì•½</p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-2xl bg-[#f3eadb] p-5">
+                    <p className="text-sm text-stone-500">ì´ì </p>
+                    <p className="mt-2 text-3xl font-semibold text-stone-900">{result.score}??/p>
+                  </div>
+                  <div className="rounded-2xl bg-[#edf7f0] p-5">
+                    <p className="text-sm text-stone-500">?•ë‹µ</p>
+                    <p className="mt-2 text-3xl font-semibold text-emerald-700">{result.correctCount}ê°?/p>
+                  </div>
+                  <div className="rounded-2xl bg-[#fff0ef] p-5">
+                    <p className="text-sm text-stone-500">?¤ë‹µ</p>
+                    <p className="mt-2 text-3xl font-semibold text-rose-700">{result.wrongCount}ê°?/p>
+                  </div>
+                  <div className="rounded-2xl bg-stone-100 p-5">
+                    <p className="text-sm text-stone-500">ë¯¸ì‘??/p>
+                    <p className="mt-2 text-3xl font-semibold text-stone-700">{result.unansweredCount}ê°?/p>
+                  </div>
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-stone-200 bg-[#fffdf8] p-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#955f21]">? í˜•ë³?ê²°ê³¼</p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-stone-200 bg-white p-5">
+                    <p className="text-lg font-semibold text-stone-900">ê°ê???/p>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-stone-700">
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">?•ë‹µ {resultCount(result.results, 'objective', 'correct')}</div>
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">?¤ë‹µ {resultCount(result.results, 'objective', 'wrong')}</div>
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">ë¯¸ì‘??{resultCount(result.results, 'objective', 'unanswered')}</div>
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">ì¤‘ë³µ {resultCount(result.results, 'objective', 'duplicated')}</div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-stone-200 bg-white p-5">
+                    <p className="text-lg font-semibold text-stone-900">ì£¼ê???/p>
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-stone-700">
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">?•ë‹µ {resultCount(result.results, 'subjective', 'correct')}</div>
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">?¤ë‹µ {resultCount(result.results, 'subjective', 'wrong')}</div>
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">ë¯¸ì‘??{resultCount(result.results, 'subjective', 'unanswered')}</div>
+                      <div className="rounded-xl bg-stone-100 px-4 py-3">ì¤‘ë³µ {resultCount(result.results, 'subjective', 'duplicated')}</div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article className="rounded-[1.5rem] border border-stone-200 bg-white p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-stone-500">ë¬¸í•­ë³?ê²°ê³¼</p>
+                    <p className="mt-1 text-sm text-stone-600">?œë²„ ì±„ì  ê²°ê³¼ë¥?ê·¸ë?ë¡??œì‹œ?©ë‹ˆ??</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('tutorial')
+                      setRemainingSeconds(EXAM_DURATION_MINUTES * 60)
+                      submitMutation.reset()
+                    }}
+                    className="inline-flex items-center justify-center rounded-2xl bg-[#1f4a3d] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#17382f]"
+                  >
+                    ?¤ì‹œ ?‘ì‹œ?˜ê¸°
+                  </button>
+                </div>
+
+                <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                  {result.results.map((entry) => (
+                    <div
+                      key={`${entry.answerType}-${entry.number}`}
+                      className="flex items-center justify-between rounded-2xl border border-stone-200 px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-stone-900">
+                          {entry.answerType === 'objective' ? 'ê°ê??? : 'ì£¼ê???} {entry.number}ë²?                        </p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.14em] text-stone-500">{entry.answerType}</p>
+                      </div>
+                      <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${resultToneMap[entry.result]}`}>
+                        {resultLabelMap[entry.result]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </>
+          ) : null}
+        </section>
+      </div>
+    </main>
+  )
+}
+
+export default App

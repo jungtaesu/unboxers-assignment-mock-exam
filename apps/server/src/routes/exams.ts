@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from "fastify";
-import { AnswerType } from "@prisma/client";
+import { AnswerType } from "../generated/prisma";
 import { z } from "zod";
 
 import { GRADE_RESULT } from "../lib/constants";

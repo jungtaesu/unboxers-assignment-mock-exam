@@ -1,4 +1,4 @@
-# Unboxers Assignment Mock Exam
+﻿# Unboxers Assignment Mock Exam
 
 ## 과제 개요
 
@@ -234,13 +234,24 @@ pnpm dev
 | 10 | 1 | 8 |
 | 11 | 104 | 8 |
 
-## 웹앱 실행 방법 요청
+## Web App Run
 
-이 저장소를 포크한 뒤, 아래에 웹앱 실행 방법도 함께 작성해 주세요.
+프로젝트 루트 디렉토리에서 아래 명령어를 순서대로 실행하세요.
 
-예시 형식:
+```bash
+# 1. 의존성 설치
+pnpm install
 
-- `## Web App Run`
-- `pnpm install`
-- `pnpm dev`
-- 웹앱 실행 주소 기재
+# 2. DB 초기화 (최초 1회)
+pnpm db:generate
+pnpm db:push
+pnpm db:seed
+
+# 3. 서버 실행 (터미널 1)
+pnpm dev
+# → http://localhost:3001
+
+# 4. 웹앱 실행 (터미널 2)
+pnpm dev:web
+# → http://localhost:5173
+```

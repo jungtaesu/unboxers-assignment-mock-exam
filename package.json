@@ -3,9 +3,11 @@
   "private": true,
   "packageManager": "pnpm@10.30.3",
   "scripts": {
-    "dev": "pnpm --filter server dev",
-    "db:generate": "pnpm --filter server db:generate",
-    "db:push": "pnpm --filter server db:push",
-    "db:seed": "pnpm --filter server db:seed"
+    "dev": "pnpm --filter unboxers-assignment-mock-exam-server dev",
+    "dev:web": "pnpm --filter web dev",
+    "db:generate": "pnpm --filter unboxers-assignment-mock-exam-server db:generate",
+    "db:push": "pnpm --filter unboxers-assignment-mock-exam-server db:push",
+    "db:seed": "pnpm --filter unboxers-assignment-mock-exam-server db:seed",
+    "build:web": "pnpm --filter web build"
   }
 }

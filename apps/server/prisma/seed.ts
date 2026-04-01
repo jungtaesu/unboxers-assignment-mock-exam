@@ -1,4 +1,5 @@
-import { AnswerType, PrismaClient } from "@prisma/client";
+import { AnswerType, PrismaClient } from "../src/generated/prisma";
+//schema.prisma에서 output이 ../src/generated/prisma로 지정되어 있는데, seed.ts는 @prisma/client에서 import하고 있어서 경로가 안 맞는 겁니다.
 
 const prisma = new PrismaClient();
 
