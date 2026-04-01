@@ -4,7 +4,7 @@ import { OmrCard } from '../OmrCard'
 export function TutorialSubjectiveTryStep(props: OmrPracticeProps) {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 items-start justify-center overflow-auto p-6">
+      <div className="flex flex-1 items-start justify-center overflow-auto p-6 pt-0">
         <OmrCard
           objectiveAnswers={props.objectiveAnswers}
           subjectiveAnswers={props.subjectiveAnswers}

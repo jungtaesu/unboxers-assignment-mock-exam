@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ExamSummary, StudentForm, SubmitPayload } from '../types'
-import { OmrCard } from './OmrCard'
+import { ExamOmrCard } from './omr/ExamOmrCard'
 
 const OBJECTIVE_QUESTIONS = Array.from({ length: 14 }, (_, i) => i + 1)
 const SUBJECTIVE_QUESTIONS = Array.from({ length: 11 }, (_, i) => i + 1)
@@ -139,9 +139,9 @@ export function MarkingScreen({ exam, onSubmit, isSubmitting, submitError }: Mar
       )}
 
       {/* OMR 본체 */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-4xl">
-          <OmrCard
+      <div className="flex-1 overflow-y-auto p-6 bg-[#f3f1e8]">
+        <div className="mx-auto max-w-5xl">
+          <ExamOmrCard
             objectiveAnswers={objectiveAnswers}
             subjectiveAnswers={subjectiveAnswers}
             onObjectiveSelect={(n, c) =>

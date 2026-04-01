@@ -44,8 +44,10 @@ export function OmrCard({
     ? [OBJ_TUTORIAL_COL1, OBJ_TUTORIAL_COL2, OBJ_TUTORIAL_COL3]
     : [OBJ_COL1, OBJ_COL2]
 
-  const rootClass = (objectiveOnly30 || subjectiveOnly)
+  const rootClass = objectiveOnly30
     ? 'mx-auto flex w-fit overflow-hidden rounded-2xl border border-[#dde0e8] bg-white shadow-[0_8px_24px_#0000000C]'
+    : subjectiveOnly
+    ? 'mx-auto flex w-fit items-start gap-[60px]'
     : 'flex w-full overflow-hidden rounded-2xl border border-[#dde0e8] bg-white shadow-[0_8px_24px_#0000000C]'
 
   return (
@@ -88,7 +90,7 @@ export function OmrCard({
                     <span
                       className={[
                         objectiveOnly30
-                          ? 'flex h-[44px] w-6 shrink-0 items-center justify-center bg-[#8FB6FF] text-[14px] font-bold border-r border-[#5f86e7] text-[#364F8E]'
+                          ? 'flex h-[44px] w-6 shrink-0 items-center justify-center bg-[#8FB6FF] text-[14px] font-bold border-[#5f86e7] text-[#364F8E]'
                           : 'w-7 shrink-0 text-right text-[12px] font-bold',
                         !objectiveOnly30 && (isLocked ? 'text-[#b6c3e6]' : 'text-[#364F8E]'),
                       ].join(' ')}
@@ -156,23 +158,23 @@ export function OmrCard({
           {/* ─── 주관식 영역 ─── */}
           <div className="flex shrink-0">
             {/* 주관식 목록 */}
-            <div className={subjectiveOnly ? 'flex w-[280px] flex-col' : 'w-52 flex-col'}>
+            <div className={subjectiveOnly ? 'flex w-[300px] flex-col rounded-b-[20px] bg-[#FFFDF1] p-4 shadow-sm' : 'w-52 flex-col'}>
               {!subjectiveOnly && (
                 <div className="bg-[#364F8E] px-4 py-2 text-center">
                   <p className="text-[13px] font-bold tracking-[0.3em] text-white">주 관 식 답 안</p>
                 </div>
               )}
-              <div className={subjectiveOnly ? 'p-2' : 'p-3'}>
+              <div className={subjectiveOnly ? 'flex flex-col border-x border-t border-[#5f86e7]' : 'p-3'}>
                 {SUBJ_QS.map((qn) => {
                   const isLocked = tutorialSubjectiveLock != null && tutorialSubjectiveLock !== qn
                   const val = subjectiveAnswers[qn] ?? ''
                   const isActive = activeSubjective === qn
                   return (
-                    <div key={qn} className={subjectiveOnly ? 'flex items-center gap-2.5' : 'mb-1.5 flex items-center gap-1.5'}>
+                    <div key={qn} className={subjectiveOnly ? 'flex items-center border-b border-[#5f86e7]' : 'mb-1.5 flex items-center gap-1.5'}>
                       <span
                         className={[
                           subjectiveOnly
-                            ? 'flex h-[44px] w-6 shrink-0 items-center justify-center bg-[#8FB6FF] text-[14px] font-bold border-r border-[#5f86e7] text-[#364F8E]'
+                            ? 'flex h-[40px] w-10 shrink-0 items-center justify-center bg-[#EBF1FF] text-[14px] font-bold border-r border-[#5f86e7] text-[#364F8E]'
                             : 'w-5 shrink-0 text-right text-[12px] font-bold',
                           !subjectiveOnly && (isLocked ? 'text-[#d0d0d0]' : 'text-[#555]'),
                         ].join(' ')}
@@ -185,38 +187,52 @@ export function OmrCard({
                         onClick={() => !isLocked && onSubjectiveActivate(isActive ? null : qn)}
                         className={[
                           subjectiveOnly
-                            ? 'flex h-[44px] flex-1 items-center justify-center rounded-lg border text-[13px] transition-all'
+                            ? 'relative flex h-[40px] flex-1 items-center justify-center text-[13px] transition-all bg-transparent outline-none'
                             : 'flex h-8 flex-1 items-center justify-center rounded-lg border text-[12px] transition-all',
-                          isActive
+                          isActive && !subjectiveOnly
                             ? 'border-[#5784F1] bg-[#EEF2FF] font-medium text-[#090909]'
-                            : val
-                              ? 'border-[#dde0e8] bg-white font-bold text-[#090909]'
-                              : 'border-[#eeeff2] bg-[#fafafa] text-[#c0c0c0]',
+                            : isActive && subjectiveOnly
+                              ? 'border-[2px] border-[#5784F1] font-bold text-[#090909] z-10'
+                              : val && !subjectiveOnly
+                                ? 'border-[#dde0e8] bg-white font-bold text-[#090909]'
+                                : val && subjectiveOnly
+                                  ? 'font-bold text-[#090909]'
+                                  : subjectiveOnly
+                                    ? 'text-[#b6b6b6]'
+                                    : 'border-[#eeeff2] bg-[#fafafa] text-[#c0c0c0]',
                           isLocked && !subjectiveOnly ? 'cursor-default opacity-25' : '',
                           isLocked && subjectiveOnly ? 'cursor-default' : '',
                         ].join(' ')}
                       >
-                        {val || (isActive ? '입력 중…' : '터치해서 입력')}
+                        {val || (isActive ? (subjectiveOnly ? '답안을 입력하세요' : '입력 중…') : (subjectiveOnly ? '터치해서 주관식 답안 입력' : '터치해서 입력'))}
                       </button>
                     </div>
                   )
                 })}
               </div>
+              {subjectiveOnly && (
+                <p className="mt-3 text-center text-[14px] font-medium text-[#555]">
+                  주관식 입력 부분입니다.
+                </p>
+              )}
             </div>
 
-            {/* 키패드 (주관식 문항 활성화 시 오른쪽에 표시) */}
-            {activeSubjective != null && (
-              <>
-                <div className="w-px bg-[#dde0e8]" />
-                <div className="flex items-center justify-center p-3">
-                  <Keypad
-                    value={subjectiveAnswers[activeSubjective] ?? ''}
-                    onChange={(val) => onSubjectiveChange(activeSubjective, val)}
-                    onConfirm={() => onSubjectiveActivate(null)}
-                  />
-                </div>
-              </>
-            )}
+            {/* 키패드 */}
+            {(subjectiveOnly || activeSubjective != null) && (() => {
+              const target = activeSubjective ?? (subjectiveOnly ? (tutorialSubjectiveLock ?? null) : null)
+              return (
+                <>
+                  {!subjectiveOnly && <div className="w-px bg-[#dde0e8] ml-2" />}
+                  <div className={subjectiveOnly ? 'flex items-center justify-center pt-2 px-6' : 'flex items-center justify-center p-6'}>
+                    <Keypad
+                      value={target != null ? (subjectiveAnswers[target] ?? '') : ''}
+                      onChange={(val) => target != null && onSubjectiveChange(target, val)}
+                      onConfirm={() => onSubjectiveActivate(null)}
+                    />
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </>
       )}
@@ -247,17 +263,17 @@ function Keypad({ value, onChange, onConfirm }: KeypadProps) {
   ] as const
 
   return (
-    <div className="w-44">
+    <div className="w-[180px]">
       {/* 입력 표시 */}
-      <div className="mb-3 flex h-10 items-center justify-center rounded-xl border border-[#5784F1] bg-[#EEF2FF] text-[17px] font-bold text-[#090909]">
+      <div className="mb-4 flex h-[44px] items-center justify-center rounded-[12px] bg-white shadow-[0_2px_12px_#0000000C] text-[18px] font-bold text-[#090909]">
         {value || (
           <span className="text-[12px] font-normal text-[#b6b6b6]">입력할 곳을 터치해주세요</span>
         )}
       </div>
 
-      <div className="grid gap-2">
+      <div className="grid gap-2.5">
         {rows.map((row, ri) => (
-          <div key={ri} className="grid grid-cols-3 gap-2">
+          <div key={ri} className="grid grid-cols-3 gap-2.5">
             {row.map((key, ki) =>
               key === null ? (
                 <div key={ki} />
@@ -266,7 +282,7 @@ function Keypad({ value, onChange, onConfirm }: KeypadProps) {
                   key={ki}
                   type="button"
                   onClick={() => handle('backspace')}
-                  className="flex h-10 items-center justify-center rounded-xl bg-[#f5f5f5] text-[16px] text-[#090909] transition hover:bg-[#e8e8e8] active:scale-95"
+                  className="flex h-[44px] items-center justify-center rounded-[12px] bg-white shadow-[0_2px_12px_#0000000C] text-[18px] text-[#090909] transition hover:bg-[#f9f9f9] active:scale-95"
                 >
                   ⌫
                 </button>
@@ -275,7 +291,7 @@ function Keypad({ value, onChange, onConfirm }: KeypadProps) {
                   key={ki}
                   type="button"
                   onClick={() => handle(key)}
-                  className="flex h-10 items-center justify-center rounded-xl bg-[#f5f5f5] text-[16px] font-bold text-[#090909] transition hover:bg-[#e8e8e8] active:scale-95"
+                  className="flex h-[44px] items-center justify-center rounded-[12px] bg-white shadow-[0_2px_12px_#0000000C] text-[16px] font-bold text-[#090909] transition hover:bg-[#f9f9f9] active:scale-95"
                 >
                   {key}
                 </button>
@@ -287,7 +303,7 @@ function Keypad({ value, onChange, onConfirm }: KeypadProps) {
         <button
           type="button"
           onClick={() => handle('confirm')}
-          className="mt-1 flex h-10 w-full items-center justify-center rounded-xl bg-[#364F8E] text-[15px] font-bold text-white transition hover:bg-[#2d4278] active:scale-95"
+          className="mt-1.5 flex h-[46px] w-full items-center justify-center rounded-[12px] bg-white shadow-[0_2px_12px_#0000000C] text-[15px] font-bold text-[#364F8E] transition hover:bg-[#f9f9f9] active:scale-95"
         >
           완료
         </button>
