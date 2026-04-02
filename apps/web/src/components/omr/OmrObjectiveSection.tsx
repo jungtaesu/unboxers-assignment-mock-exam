@@ -46,7 +46,7 @@ export function OmrObjectiveSection({ answers, onSelect }: OmrObjectiveSectionPr
                           className={[
                             'flex h-7 w-9 items-center justify-center rounded-full text-[12px] font-bold transition-all',
                             isSelected
-                              ? 'bg-[#364F8E] text-white shadow-sm'
+                              ? 'bg-[#090909] text-white shadow-sm'
                               : 'bg-[#A5A4A0] text-white hover:bg-[#8f8e89] active:scale-95',
                           ].join(' ')}
                         >

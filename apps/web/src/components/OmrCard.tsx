@@ -45,7 +45,7 @@ export function OmrCard({
     : [OBJ_COL1, OBJ_COL2]
 
   const rootClass = objectiveOnly30
-    ? 'mx-auto flex w-fit overflow-hidden rounded-2xl border border-[#dde0e8] bg-white shadow-[0_8px_24px_#0000000C]'
+    ? 'mx-auto flex w-fit overflow-hidden border border-[#dde0e8] bg-white shadow-[0_8px_24px_#0000000C]'
     : subjectiveOnly
     ? 'mx-auto flex w-fit items-start gap-[60px]'
     : 'flex w-full overflow-hidden rounded-2xl border border-[#dde0e8] bg-white shadow-[0_8px_24px_#0000000C]'
@@ -61,11 +61,11 @@ export function OmrCard({
           </div>
         )}
 
-        <div className="flex flex-1 divide-x divide-[#eeeff2]">
+<div className={objectiveOnly30 ? "flex flex-1 divide-x divide-[#5f86e7]" : "flex flex-1 divide-x divide-transparent"}>
           {objectiveColumns.map((col, ci) => (
             <div
               key={ci}
-              className={objectiveOnly30 ? 'w-[100%] border-x border-[#5f86e7] bg-[#f3f1e8] p-3 pt-0' : 'flex-1 p-3'}
+              className={objectiveOnly30 ? 'flex flex-col flex-1 bg-[#f3f1e8]' : 'flex-1 p-3'}
             >
               {!objectiveOnly30 && (
                 <div className="mb-2 flex items-center gap-0.5">
@@ -84,20 +84,32 @@ export function OmrCard({
                 const ans = objectiveAnswers[qn]
                 const isLastOfGroup = objectiveOnly30 && [10, 20, 30].includes(qn)
                 const isMultiQ = multiObjectiveAnswers != null && qn in multiObjectiveAnswers
+                const isDotted = objectiveOnly30 && qn % 5 === 0 && qn % 10 !== 0
                 return (
-                  <div key={qn}>
-                  <div className={objectiveOnly30 ? 'flex items-center gap-2.5' : 'mb-1.5 flex items-center gap-0.5'}>
+                  <div key={qn} className={
+                    objectiveOnly30
+                      ? isLastOfGroup
+                        ? 'flex h-[52px] items-center border-b border-[#5f86e7]'
+                        : 'flex h-[52px] items-center'
+                      : 'mb-1.5 flex items-center gap-0.5'
+                  }>
                     <span
                       className={[
                         objectiveOnly30
-                          ? 'flex h-[44px] w-6 shrink-0 items-center justify-center bg-[#8FB6FF] text-[14px] font-bold border-[#5f86e7] text-[#364F8E]'
+                          ? 'flex h-full w-[36px] shrink-0 items-center justify-center bg-[#EBF1FF] text-[15px] font-bold'
                           : 'w-7 shrink-0 text-right text-[12px] font-bold',
                         !objectiveOnly30 && (isLocked ? 'text-[#b6c3e6]' : 'text-[#364F8E]'),
-                      ].join(' ')}
+                        objectiveOnly30 && 'text-[#364F8E]'
+                      ].filter(Boolean).join(' ')}
                     >
                       {qn}
                     </span>
-                    <div className={objectiveOnly30 ? 'flex items-center gap-[10px]' : 'flex items-center gap-0.5'}>
+                    <div className={[
+                      objectiveOnly30
+                        ? 'flex flex-1 items-center justify-center gap-[5px] px-[12px] h-full bg-[#f3f1e8]'
+                        : 'flex items-center gap-0.5',
+                      objectiveOnly30 && isDotted ? 'border-b border-dashed border-[#5f86e7]' : ''
+                    ].filter(Boolean).join(' ')}>
                       {CHOICES.map((c) => {
                         const isSelected = isMultiQ
                           ? (multiObjectiveAnswers![qn] ?? []).includes(c)
@@ -113,17 +125,17 @@ export function OmrCard({
                             }
                             className={[
                               objectiveOnly30
-                                ? 'flex h-[40px] w-[20px] items-center justify-center rounded-[20px] px-[10px] py-[8px] text-[12px] font-bold leading-none transition-all'
+                                ? 'flex h-[44px] w-[20px] items-center justify-center rounded-[20px] px-0 py-0 text-[12px] font-bold leading-none transition-all'
                                 : 'flex h-7 w-9 items-center justify-center rounded-full text-[12px] font-bold transition-all',
                               isSelected
-                                ? 'bg-[#364F8E] text-white shadow-sm'
+                                ? (objectiveOnly30 ? 'bg-[#090909] text-white shadow-sm' : 'bg-[#364F8E] text-white shadow-sm')
                                 : 'bg-[#A5A4A0] text-white',
                               !isLocked && !isSelected
                                 ? 'hover:bg-[#8f8e89] active:scale-95'
                                 : '',
                               isLocked && !objectiveOnly30 ? 'cursor-default opacity-25' : '',
                               isLocked && objectiveOnly30 ? 'cursor-default' : '',
-                            ].join(' ')}
+                            ].filter(Boolean).join(' ')}
                           >
                             {c}
                           </button>
@@ -131,21 +143,31 @@ export function OmrCard({
                       })}
                     </div>
                   </div>
-                  {isLastOfGroup && (
-                    <div className="mb-1.5 flex gap-[10px] pl-[34px]">
-                      {CHOICES.map((c) => (
-                        <div key={c} className="flex w-[20px] justify-center">
-                          <div className="h-[24px] w-[8px] bg-black" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  </div>
                 )
               })}
             </div>
           ))}
         </div>
+
+        {/* 검은 마커 (objectiveOnly30의 경우 맨 밑에 일괄 배치) */}
+        {objectiveOnly30 && (
+          <div className="flex pt-[4px] bg-[#f3f1e8]">
+            <div className="flex flex-1 divide-x divide-transparent">
+              {objectiveColumns.map((col, ci) => (
+                <div key={ci} className="flex flex-1">
+                  <div className="w-[36px] shrink-0" />
+                  <div className="flex flex-1 items-start justify-center gap-[5px] px-[12px]">
+                    {CHOICES.map((c) => (
+                      <div key={c} className="flex w-[20px] justify-center">
+                        <div className="h-[24px] w-[8px] bg-black" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       )}
 

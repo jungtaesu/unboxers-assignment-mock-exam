@@ -20,6 +20,7 @@ const RESULT_STYLE: Record<GradeResult, string> = {
 }
 
 export function ResultScreen({ result, onRetry }: ResultScreenProps) {
+
   const objectiveResults = result.results.filter((r) => r.answerType === 'objective')
   const subjectiveResults = result.results.filter((r) => r.answerType === 'subjective')
 

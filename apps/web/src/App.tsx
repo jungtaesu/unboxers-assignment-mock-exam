@@ -41,7 +41,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#f5f5f5]">
+    <div className="flex h-screen flex-col bg-[#f5f5f5] ">
       <Header studentName={undefined} onHome={handleRetry} />
       {step === 'tutorial' && (
         <TutorialScreen exam={exam} onSkip={handleComplete} onComplete={handleComplete} />
