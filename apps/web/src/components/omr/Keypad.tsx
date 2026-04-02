@@ -1,5 +1,3 @@
-import React from 'react'
-
 type KeypadProps = {
   value: string
   onChange: (val: string) => void

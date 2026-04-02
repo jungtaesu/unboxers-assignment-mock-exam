@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ExamSummary, StudentForm, SubmitPayload } from '../types'
+import type { ExamSummary, SubmitPayload } from '../types'
 import { ExamOmrCard } from './omr/ExamOmrCard'
 
 const OBJECTIVE_QUESTIONS = Array.from({ length: 30 }, (_, i) => i + 1)
@@ -19,7 +19,7 @@ function formatTime(sec: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function MarkingScreen({ exam, onSubmit, isSubmitting, submitError }: MarkingScreenProps) {
+export function MarkingScreen({ exam, onSubmit, isSubmitting }: MarkingScreenProps) {
   const [remaining, setRemaining] = useState(EXAM_TOTAL_SEC)
   const [objectiveAnswers, setObjectiveAnswers] = useState<Record<number, number | null>>(
     () => Object.fromEntries(OBJECTIVE_QUESTIONS.map((n) => [n, null])) as Record<number, number | null>

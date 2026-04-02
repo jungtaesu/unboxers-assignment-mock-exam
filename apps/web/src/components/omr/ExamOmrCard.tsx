@@ -160,7 +160,7 @@ export function ExamOmrCard({
         <div className="flex pt-[4px]">
           <div className="w-[160px] shrink-0" />
           <div className="flex flex-1 divide-x divide-transparent">
-            {objectiveColumns.map((col, ci) => (
+            {objectiveColumns.map((_, ci) => (
               <div key={ci} className="flex flex-1">
                 <div className="w-[36px] shrink-0" />
                 <div className="flex flex-1 items-start justify-center gap-[5px] px-[12px]">
