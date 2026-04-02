@@ -1,5 +1,5 @@
 import type { OmrPracticeProps } from '../../types'
-import { OmrCard } from '../OmrCard'
+import { OmrCard } from '../omr/OmrCard'
 
 export function TutorialObjectiveTryStep(props: OmrPracticeProps) {
   return (
